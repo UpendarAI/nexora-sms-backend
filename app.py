@@ -1,23 +1,24 @@
-from flask import Flask, request, Response
 import os
 import requests
+from flask import Flask, request, Response
 
 app = Flask(__name__)
 
 NOVITA_API_KEY = os.environ.get("NOVITA_API_KEY")
+NOVITA_BASE_URL = "https://api.novita.ai/openai/v1/chat/completions"
+NOVITA_MODEL = "meta-llama/llama-3.1-8b-instruct"  # Novita OpenAI-style model
 
-NOVITA_BASE_URL = "https://api.novita.ai/openai/chat/completions"
-NOVITA_MODEL = "openai/gpt-oss-20b"  # you can change later if you want
+
+@app.get("/")
+def index():
+    # Just to see something in the browser
+    return "Nexora SMS backend is running. Twilio should POST to /sms."
 
 
 def ask_novita(user_message: str) -> str:
+    """Call Novita AI and get a short reply."""
     if not NOVITA_API_KEY:
-        return "Server error: NOVITA_API_KEY is not set."
-
-    headers = {
-        "Authorization": f"Bearer {NOVITA_API_KEY}",
-        "Content-Type": "application/json",
-    }
+        return "Server error: NOVITA_API_KEY is not configured."
 
     payload = {
         "model": NOVITA_MODEL,
@@ -26,53 +27,43 @@ def ask_novita(user_message: str) -> str:
                 "role": "system",
                 "content": (
                     "You are Nexora AI, a friendly SMS assistant. "
-                    "Reply in 1–3 short sentences. Never include XML in your answer."
+                    "Reply in 1–2 sentences, clear and simple."
                 ),
             },
             {"role": "user", "content": user_message},
         ],
         "max_tokens": 256,
-        "temperature": 0.7,
+        "temperature": 0.6,
     }
 
-    try:
-        resp = requests.post(
-            NOVITA_BASE_URL, headers=headers, json=payload, timeout=15
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as e:
-        # Log to server, but send a simple msg to user
-        print("Novita error:", e)
-        return "Sorry, I'm having trouble answering right now."
+    headers = {
+        "Authorization": f"Bearer {NOVITA_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    resp = requests.post(NOVITA_BASE_URL, json=payload, headers=headers, timeout=20)
+    resp.raise_for_status()
+    data = resp.json()
+    return data["choices"][0]["message"]["content"].strip()
 
 
-@app.route("/", methods=["GET"])
-def health():
-    return "Nexora SMS bot is running."
+@app.post("/sms")
+def sms_webhook():
+    """Twilio hits this URL when an SMS comes in."""
+    incoming = request.form.get("Body", "").strip()
 
-
-@app.route("/twilio-webhook", methods=["POST"])
-def twilio_webhook():
-    # Twilio sends form-encoded data
-    user_message = request.form.get("Body", "").strip()
-    from_number = request.form.get("From", "")
-
-    if not user_message:
-        ai_reply = "I didn't receive a message. Please text me again."
+    if not incoming:
+        reply_text = "Hey! I didn’t get any text in your message."
     else:
-        ai_reply = ask_novita(user_message)
+        try:
+            reply_text = ask_novita(incoming)
+        except Exception:
+            # Don’t expose real error to user
+            reply_text = "Sorry, I’m having trouble answering right now."
 
-    # Twilio expects TwiML (XML)
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Message>{ai_reply}</Message>
+    <Message>{reply_text}</Message>
 </Response>"""
 
-    return Response(twiml, mimetype="text/xml")
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    return Response(twiml, mimetype="application/xml")
