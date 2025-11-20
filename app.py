@@ -4,12 +4,10 @@ import vonage
 
 app = Flask(__name__)
 
-# Vonage Client initialization
+# Vonage Client initialization (correct for SMS)
 client = vonage.Client(
     key=os.getenv("VONAGE_API_KEY"),
-    secret=os.getenv("VONAGE_API_SECRET"),
-    application_id=os.getenv("VONAGE_APPLICATION_ID"),
-    private_key=os.getenv("VONAGE_PRIVATE_KEY")
+    secret=os.getenv("VONAGE_API_SECRET")
 )
 
 sms = vonage.Sms(client)
@@ -18,7 +16,6 @@ sms = vonage.Sms(client)
 def home():
     return "Vonage SMS Backend Running!"
 
-# Send outbound SMS
 @app.route("/sms", methods=["POST"])
 def send_sms():
     data = request.json
