@@ -4,14 +4,14 @@ import vonage
 
 app = Flask(__name__)
 
-client = vonage.VonageClient(
-    api_key=os.getenv("VONAGE_API_KEY"),
-    api_secret=os.getenv("VONAGE_API_SECRET"),
+client = vonage.Client(
+    key=os.getenv("VONAGE_API_KEY"),
+    secret=os.getenv("VONAGE_API_SECRET")
 )
 
-sms = client.sms
+sms = vonage.Sms(client)
 
-@app.route("/")
+@app.route("/", methods=["GET"])
 def home():
     return "Vonage SMS Backend Running!"
 
@@ -22,7 +22,7 @@ def send_sms():
     message = data.get("message")
 
     if not to_number or not message:
-        return jsonify({"error": "Missing to or message"}), 400
+        return jsonify({"error": "Missing 'to' or 'message'"}), 400
 
     response = sms.send_message({
         "from": os.getenv("VONAGE_FROM_NUMBER"),
