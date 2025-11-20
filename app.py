@@ -4,6 +4,7 @@ import vonage
 
 app = Flask(__name__)
 
+# Correct Vonage client initialization
 client = vonage.Client(
     key=os.getenv("VONAGE_API_KEY"),
     secret=os.getenv("VONAGE_API_SECRET")
