@@ -4,12 +4,12 @@ import vonage
 
 app = Flask(__name__)
 
-client = vonage.Client(
-    key=os.getenv("VONAGE_API_KEY"),
-    secret=os.getenv("VONAGE_API_SECRET")
+client = vonage.VonageClient(
+    api_key=os.getenv("VONAGE_API_KEY"),
+    api_secret=os.getenv("VONAGE_API_SECRET"),
 )
 
-sms = vonage.Sms(client)
+sms = client.sms
 
 @app.route("/")
 def home():
@@ -18,7 +18,6 @@ def home():
 @app.route("/sms", methods=["POST"])
 def send_sms():
     data = request.json
-
     to_number = data.get("to")
     message = data.get("message")
 
