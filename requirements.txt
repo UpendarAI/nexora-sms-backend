@@ -1,5 +1,5 @@
 Flask
 gunicorn
-vonage
+vonage<4
 openai
 python-dotenv
