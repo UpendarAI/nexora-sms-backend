@@ -1,3 +1,5 @@
 Flask
 gunicorn
-vonage==3.9.0
+vonage
+openai
+python-dotenv
